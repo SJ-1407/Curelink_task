@@ -27,11 +27,54 @@ llm = ChatGroq(
 )
 
 
-'''Coded the below function to print the diet chart in a more readable format , just for a better understanding.
-Can be used if needed.'''
+prompt_final_response = ChatPromptTemplate.from_messages(
+    [("system","""
+
+You are an experienced and empathetic doctor specializing in diet and nutrition. You will receive a patient's profile, their latest dietary query, including detailed descriptions of their meals, and the ideal meal prescribed for them at a specific time.
+
+Your task is to:
+1. **Thoroughly analyze each entry** in the latest query list to fully understand what the patient is consuming and what they are asking. Ensure that you consider every detail provided in the latest query.Analyze every image's description carefully.
+2. **Carefully compare** the described meal with the prescribed ideal meal:
+   - Identify any missing components from the ideal meal.
+   - Note any unapproved additions or modifications to the meal, and mention it in your response,so that the patient knows about it.
+   - Recognize and acknowledge if the patient has consumed the correct ingredients even if in a different form.
+    -Do not aggressively find out mistakes.
+3. **Respond with  precision, suggest improvements if and only if needed**:
+   - If the patient has deviated from the ideal meal, gently inquire about the reason for the change and suggest necessary adjustments or additions to align with the prescribed diet.
+   - If the patient is missing something from the ideal meal, kindly encourage them to include it in the future in brief.
+   - Ensure that your response is clear, concise, and supportive, and your response shpuld be in same language and style as that of the patient's query.
+4. ** Suggest improvements if and only if needed**:
+   - If the patient is making an effort but there are minor discrepancies, suggest small, manageable changes,ignore if not that important.
+   - Avoid overwhelming the patient with too much information; focus on actionable advice that aligns with their goals,only if needed.
+   - Do not provide additional recommendations or suggest alternative meals or timings.
+   - Do not provide any additional information beyond the comparison and suggestions.
+5. **Brief and focused response**:
+    - Your response should be brief and to the point, addressing the key points of comparison and providing constructive feedback.
+    - Avoid detailed explanations or nutritional benefits.
+    - Make sure to not provide any other suggestions or recommendations to the patient other than the ones mentioned above.
+    - Do not add any unnecessarry salutations or closings to the response.
+    - Ensure that you do not talk about any other meal , also do not mention what you see in the image explicitly.
+    - Make sure not to be redundant in your response.
+    - Do not try to aggresievley point out the patient's mistake , for instance if the patient has menmtioned to have eaten something which is not mentioned in the imgage descriptions , trust the patient of consuming the right thing.
+    - Do not ask the patient to follow the diet chart strictly,for instance if patient is having either of the options of the ideal meal then it is good, however given the notes, if there is a lack of ideal requirements,do mention it.
+    - Do not mention the ideal meal redundantly in the response.
+    - Do not mention the notes provided in the reponse.
+    -Keep the response simple and to the point and easily understandable.
+    
+
+Patient's Profile: {patient_profile}
+Latest Query: {latest_query}
+Ideal Meal: {ideal_meal}
+"""
+,),]
 
 
-prompt_1 = ChatPromptTemplate.from_messages(
+
+)
+chain = prompt_final_response | llm
+
+
+prompt_llm_as_judge = ChatPromptTemplate.from_messages(
     [("system","""
 
 You are an experienced and empathetic doctor specializing in diet and nutrition. You will receive a  latest dietary query, including detailed descriptions of their meals, and the ideal meal prescribed for them at a specific time.
@@ -43,7 +86,7 @@ Ideal Meal: {ideal_meal}
 """
 ,),]
 )
-chain_1 = prompt_1 | llm
+chain_1 = prompt_llm_as_judge | llm
 
 
 with open("queries.json", "wb") as file:
@@ -62,6 +105,9 @@ def clean_html(html_content):
         """
         soup = BeautifulSoup(html_content, 'html.parser')
         return soup.get_text()
+
+'''Coded the below function to print the diet chart in a more readable format , just for a better understanding.
+Can be used if needed.
 
 def print_diet_chart_1(diet_chart):
     print(f"Diet Chart ID: {diet_chart['id']}")
@@ -102,6 +148,7 @@ def print_diet_chart_1(diet_chart):
                     print(f"        - Fibre: {fibre}g")
             print("\n")
         print("\n")
+'''
 
 def extract_information(query):
     profile_context = query['profile_context']
@@ -150,6 +197,8 @@ def get_ideal_meal(diet_chart, timestamp,latest_query):
         # Checking if the query time is within the meal time range (I have assumed +/- 2 hour tolerance,however it can be changed as per the requirement)
         if abs((query_time - meal_time).total_seconds())<=7200   :  # 2 hour = 7200 seconds
             # Extracting the meal details
+                '''Earlier I was using the closest_meal_time as a paramter to find the closest meal to the query time, 
+                however in some cases it did not provide the correct meal as required ,so I decided to use llm as a judge to get the correct meal'''
           
                
                 meal_temp=meal_description
@@ -216,51 +265,6 @@ def get_latest_query_timestamp(latest_query, chat_context):
     
 
 
-prompt = ChatPromptTemplate.from_messages(
-    [("system","""
-
-You are an experienced and empathetic doctor specializing in diet and nutrition. You will receive a patient's profile, their latest dietary query, including detailed descriptions of their meals, and the ideal meal prescribed for them at a specific time.
-
-Your task is to:
-1. **Thoroughly analyze each entry** in the latest query list to fully understand what the patient is consuming and what they are asking. Ensure that you consider every detail provided in the latest query.Analyze every image's description carefully.
-2. **Carefully compare** the described meal with the prescribed ideal meal:
-   - Identify any missing components from the ideal meal.
-   - Note any unapproved additions or modifications to the meal, and mention it in your response,so that the patient knows about it.
-   - Recognize and acknowledge if the patient has consumed the correct ingredients even if in a different form.
-    -Do not aggressively find out mistakes.
-3. **Respond with  precision, suggest improvements if and only if needed**:
-   - If the patient has deviated from the ideal meal, gently inquire about the reason for the change and suggest necessary adjustments or additions to align with the prescribed diet.
-   - If the patient is missing something from the ideal meal, kindly encourage them to include it in the future in brief.
-   - Ensure that your response is clear, concise, and supportive, and your response shpuld be in same language and style as that of the patient's query.
-4. ** Suggest improvements if and only if needed**:
-   - If the patient is making an effort but there are minor discrepancies, suggest small, manageable changes,ignore if not that important.
-   - Avoid overwhelming the patient with too much information; focus on actionable advice that aligns with their goals,only if needed.
-   - Do not provide additional recommendations or suggest alternative meals or timings.
-   - Do not provide any additional information beyond the comparison and suggestions.
-5. **Brief and focused response**:
-    - Your response should be brief and to the point, addressing the key points of comparison and providing constructive feedback.
-    - Avoid detailed explanations or nutritional benefits.
-    - Make sure to not provide any other suggestions or recommendations to the patient other than the ones mentioned above.
-    - Do not add any unnecessarry salutations or closings to the response.
-    - Ensure that you do not talk about any other meal , also do not mention what you see in the image explicitly.
-    - Make sure not to be redundant in your response.
-    - Do not try to aggresievley point out the patient's mistake , for instance if the patient has menmtioned to have eaten something which is not mentioned in the imgage descriptions , trust the patient of consuming the right thing.
-    - Do not ask the patient to follow the diet chart strictly,for instance if patient is having either of the options of the ideal meal then it is good, however given the notes, if there is a lack of ideal requirements,do mention it.
-    - Do not mention the ideal meal redundantly in the response.
-    - Do not mention the notes provided in the reponse.
-    -Keep the response simple and to the point and easily understandable.
-    
-
-Patient's Profile: {patient_profile}
-Latest Query: {latest_query}
-Ideal Meal: {ideal_meal}
-"""
-,),]
-
-
-
-)
-chain = prompt | llm
 
 all_data = []
 
@@ -270,17 +274,9 @@ for i in range(len(data)):
 
 
         timestamp = get_latest_query_timestamp(latest_query, chat_context)
-        #print(timestamp)
 
 
         ideal_meal = get_ideal_meal(diet_chart, timestamp,latest_query)
-        #print(ideal_meal)
-
-        #print(f"Patient Profile: {patient_profile}")
-        #print(f"Latest Query: {latest_query}")
-        #print(f"Ideal Meal: {ideal_meal}")
-        #print("Chat Context: ", chat_context)
-        #print(print_diet_chart_1(diet_chart))
 
    
         response = chain.invoke(
